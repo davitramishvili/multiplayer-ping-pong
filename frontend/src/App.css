@@ -1,0 +1,24 @@
+.App {
+  width: 100vw;
+  height: 100vh;
+  background-color: #000;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.game-over {
+  text-align: center;
+}
+
+.game-over h1 {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.game-over p {
+  font-size: 1.5rem;
+} 
