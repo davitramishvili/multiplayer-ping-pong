@@ -24,4 +24,18 @@ export const CONTROLS = {
     UP: 'ArrowUp',
     DOWN: 'ArrowDown'
   }
-}; 
+};
+
+// Visual styling
+export const COLORS = {
+  BACKGROUND: '#000',
+  FOREGROUND: '#fff',
+  PLAYER1: '#0f0',
+  PLAYER2: '#00f',
+  SPECTATOR: '#ff0',
+  CENTER_LINE: '#666'
+};
+
+// Animation settings
+export const GAME_FPS = 60;
+export const ANIMATION_SPEED = 1000 / GAME_FPS; // 16.67ms 
