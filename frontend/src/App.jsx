@@ -67,18 +67,24 @@ function App() {
   const handleWebSocketMessage = (data) => {
     switch (data.type) {
       case 'LOBBY_UPDATE':
+        console.log('📊 Lobby update:', data.payload)
         setGameState(prev => ({
           ...prev,
           lobbyData: data.payload
         }))
         
-        // Auto-transition to game if both players are ready and game in progress
-        // Also transition if user is a player and game is ongoing (spectator who became player)
-        if (data.payload.gameInProgress && 
-            (currentScreen === 'lobby' || 
-             (gameState.userRole === 'player1' || gameState.userRole === 'player2'))) {
-          console.log('🎮 Transitioning to game view')
-          setCurrentScreen('game')
+        // Auto-transition to game if game in progress
+        if (data.payload.gameInProgress) {
+          // If we're a spectator and game is in progress, go to game view
+          if (gameState.userRole === 'spectator' && currentScreen === 'lobby') {
+            console.log('👥 Spectator auto-transitioning to game (lobby update)')
+            setCurrentScreen('game')
+          }
+          // If we're a player and game is in progress, go to game view  
+          else if ((gameState.userRole === 'player1' || gameState.userRole === 'player2') && currentScreen === 'lobby') {
+            console.log('🎮 Player auto-transitioning to game (lobby update)')
+            setCurrentScreen('game')
+          }
         }
         
         // If game is not in progress and we're in game screen, go back to lobby
@@ -89,14 +95,15 @@ function App() {
         break
         
       case 'GAME_STATE':
+        console.log('🎮 Game state received:', data.payload.gameStatus)
         setGameState(prev => ({
           ...prev,
           gameData: data.payload
         }))
         
-        // If we're a spectator and receive game state, we should be in game view
-        if (gameState.userRole === 'spectator' && data.payload.gameStatus === 'playing' && currentScreen === 'lobby') {
-          console.log('👥 Spectator auto-transitioning to game view on game state')
+        // If we receive game state while in lobby, we should probably be in game view
+        if (data.payload.gameStatus === 'playing' && currentScreen === 'lobby') {
+          console.log('🎮 Auto-transitioning to game view on game state')
           setCurrentScreen('game')
         }
         break
@@ -123,27 +130,9 @@ function App() {
           userRole: data.payload.role
         }))
         
-        // If assigned as spectator, check if we should go to game view
-        if (data.payload.role === 'spectator') {
-          // Check if game is in progress from current lobby data or if we're already in game
-          const gameInProgress = gameState.lobbyData.gameInProgress
-          
-          if (gameInProgress || currentScreen === 'game') {
-            console.log('👥 Spectator transitioning to game view')
-            setCurrentScreen('game')
-          } else {
-            console.log('👥 Spectator staying in lobby')
-            setCurrentScreen('lobby')
-          }
-        }
-        
-        // If assigned as player and game is in progress, switch to game view
-        if ((data.payload.role === 'player1' || data.payload.role === 'player2')) {
-          if (gameState.lobbyData.gameInProgress || currentScreen === 'game') {
-            console.log('🎮 Player transitioning to game view')
-            setCurrentScreen('game')
-          }
-        }
+        // Don't auto-transition here - let LOBBY_UPDATE and GAME_STATE handle transitions
+        // This prevents conflicts and race conditions
+        console.log(`👤 Role set to ${data.payload.role}, staying on current screen until next update`)
         break
         
       case 'SLOT_AVAILABLE':

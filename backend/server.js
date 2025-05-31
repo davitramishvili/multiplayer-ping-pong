@@ -122,13 +122,21 @@ function handleJoinLobby(clientId, payload) {
       payload: { role: assignedRole }
     });
     
-    // If assigned as spectator during ongoing game, also send game state immediately
+    // If assigned as spectator during ongoing game, send complete game info
     if (assignedRole === 'spectator' && gameRoom.gameInProgress) {
+      // Send lobby update first so frontend knows game is in progress
+      sendToClient(clientId, {
+        type: 'LOBBY_UPDATE',
+        payload: gameRoom.getLobbyData()
+      });
+      
+      // Then send game state
       sendToClient(clientId, {
         type: 'GAME_STATE',
         payload: gameRoom.getGameData()
       });
-      console.log(`🎮 Sent game state to spectator ${client.name}`);
+      
+      console.log(`🎮 Sent complete game info to spectator ${client.name}`);
     }
     
     broadcastLobbyUpdate();
@@ -342,8 +350,12 @@ function handleGameStart() {
   const player1Id = gameRoom.players.player1?.id;
   const player2Id = gameRoom.players.player2?.id;
   
+  console.log(`🔍 Current players: P1=${player1Id}, P2=${player2Id}`);
+  
   // Move all clients who aren't the current players to spectators
   clients.forEach((client, clientId) => {
+    console.log(`🔍 Checking client ${clientId} (role: ${client.role}) - P1: ${clientId === player1Id}, P2: ${clientId === player2Id}`);
+    
     if (clientId !== player1Id && clientId !== player2Id) {
       // Move to spectator if they weren't already
       if (client.role !== 'spectator') {
@@ -356,8 +368,10 @@ function handleGameStart() {
           payload: { role: 'spectator' }
         });
         
-        console.log(`👥 Moved ${client.name} to spectator (game started)`);
+        console.log(`👥 Moved ${client.name} (${clientId}) to spectator (game started)`);
       }
+    } else {
+      console.log(`✅ Keeping ${client.name} (${clientId}) as ${client.role}`);
     }
   });
 }
