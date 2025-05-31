@@ -144,6 +144,7 @@ npm run install-all
 - **Backend**: Node.js with Express
 - **Real-time Communication**: Native WebSockets (ws library)
 - **Package Management**: npm with concurrently
+<<<<<<< HEAD
 - **Styling**: CSS with responsive design
 
 ## Development
@@ -167,3 +168,5 @@ This project follows a structured commit history with 10-15 commits demonstratin
 ## License
 
 MIT License 
+=======
+>>>>>>> ccf80deea76318219148caf28024c4cc3a6bce6a
