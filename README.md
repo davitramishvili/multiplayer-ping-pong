@@ -164,9 +164,3 @@ This project follows a structured commit history with 10-15 commits demonstratin
 
 - `GET /health` - Server health check
 - WebSocket events documented in `PING_PONG_SPECIFICATION.txt`
-
-## License
-
-MIT License 
-=======
->>>>>>> ccf80deea76318219148caf28024c4cc3a6bce6a
