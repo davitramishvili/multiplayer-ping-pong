@@ -274,6 +274,7 @@ class GameRoom {
   }
 
   resetGame() {
+    // Reset game state
     this.gameState.score = { player1: 0, player2: 0 };
     this.gameState.ball.x = GAME_WIDTH / 2;
     this.gameState.ball.y = GAME_HEIGHT / 2;
@@ -283,7 +284,21 @@ class GameRoom {
     this.gameState.paddle2.y = GAME_HEIGHT / 2 - PADDLE_HEIGHT / 2;
     this.gameState.gameStatus = 'waiting';
     this.gameInProgress = false;
-    console.log('🔄 Game reset');
+    
+    // Clear player slots - move players to spectators
+    if (this.players.player1) {
+      this.spectators.add(this.players.player1.id);
+      console.log(`👥 ${this.players.player1.name} moved to spectators`);
+    }
+    if (this.players.player2) {
+      this.spectators.add(this.players.player2.id);
+      console.log(`👥 ${this.players.player2.name} moved to spectators`);
+    }
+    
+    this.players.player1 = null;
+    this.players.player2 = null;
+    
+    console.log('🔄 Game reset - all players moved to spectators');
   }
 
   startGame() {

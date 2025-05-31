@@ -93,6 +93,12 @@ function App() {
           ...prev,
           gameData: data.payload
         }))
+        
+        // If we're a spectator and receive game state, we should be in game view
+        if (gameState.userRole === 'spectator' && data.payload.gameStatus === 'playing' && currentScreen === 'lobby') {
+          console.log('👥 Spectator auto-transitioning to game view on game state')
+          setCurrentScreen('game')
+        }
         break
         
       case 'GAME_OVER':
@@ -117,11 +123,13 @@ function App() {
           userRole: data.payload.role
         }))
         
-        // If assigned as spectator and there's no game in progress, stay in lobby
-        // If assigned as spectator and game is in progress, go to game view
+        // If assigned as spectator, check if we should go to game view
         if (data.payload.role === 'spectator') {
-          if (gameState.lobbyData.gameInProgress) {
-            console.log('👥 Spectator joining ongoing game')
+          // Check if game is in progress from current lobby data or if we're already in game
+          const gameInProgress = gameState.lobbyData.gameInProgress
+          
+          if (gameInProgress || currentScreen === 'game') {
+            console.log('👥 Spectator transitioning to game view')
             setCurrentScreen('game')
           } else {
             console.log('👥 Spectator staying in lobby')
@@ -130,11 +138,11 @@ function App() {
         }
         
         // If assigned as player and game is in progress, switch to game view
-        if ((data.payload.role === 'player1' || data.payload.role === 'player2') && 
-            gameState.lobbyData.gameInProgress && 
-            currentScreen === 'lobby') {
-          console.log('🎮 Transitioning spectator to game view')
-          setCurrentScreen('game')
+        if ((data.payload.role === 'player1' || data.payload.role === 'player2')) {
+          if (gameState.lobbyData.gameInProgress || currentScreen === 'game') {
+            console.log('🎮 Player transitioning to game view')
+            setCurrentScreen('game')
+          }
         }
         break
         
