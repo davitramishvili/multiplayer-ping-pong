@@ -368,4 +368,84 @@
   .instruction-item {
     justify-content: flex-start;
   }
+}
+
+/* Takeover Alert */
+.takeover-alert {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: white;
+  padding: 15px;
+  border-radius: 10px;
+  margin: 15px 0;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  animation: pulse 2s infinite;
+}
+
+.takeover-alert h4 {
+  margin: 0 0 10px 0;
+  font-size: 1.1em;
+}
+
+.takeover-alert p {
+  margin: 5px 0 15px 0;
+}
+
+.btn-takeover {
+  background: white;
+  color: #ff6b6b;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 25px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-takeover:hover {
+  background: #f8f9fa;
+  transform: scale(1.05);
+}
+
+/* Spectator Takeover Options */
+.spectator-takeover {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 10px;
+  margin-top: 15px;
+}
+
+.spectator-takeover h4 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1em;
+}
+
+.btn-take-slot {
+  background: linear-gradient(135deg, #74b9ff, #0984e3);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 20px;
+  margin: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-take-slot:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4);
+}
+
+/* Pulse animation for alerts */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 25px rgba(255, 107, 107, 0.6);
+  }
+  100% {
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+  }
 } 

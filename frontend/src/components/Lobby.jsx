@@ -1,7 +1,25 @@
 import React from 'react'
 import './Lobby.css'
 
-function Lobby({ lobbyData, userRole, connectionStatus, onJoinLobby, onTakePlayerSlot }) {
+function Lobby({ lobbyData, userRole, connectionStatus, onJoinLobby, onTakePlayerSlot, availableSlot }) {
+  if (connectionStatus === 'connecting') {
+    return (
+      <div className="lobby">
+        <h1>🏓 Ping Pong Game</h1>
+        <p>🔄 Connecting to server...</p>
+      </div>
+    )
+  }
+
+  if (connectionStatus === 'error' || connectionStatus === 'disconnected') {
+    return (
+      <div className="lobby">
+        <h1>🏓 Ping Pong Game</h1>
+        <p>❌ Connection failed. Retrying...</p>
+      </div>
+    )
+  }
+
   const getConnectionStatusColor = () => {
     switch (connectionStatus) {
       case 'connected': return '#0f0'
@@ -135,6 +153,44 @@ function Lobby({ lobbyData, userRole, connectionStatus, onJoinLobby, onTakePlaye
               {userRole === 'player2' && '👤 Player 2'}
               {userRole === 'spectator' && '👥 Spectator'}
             </div>
+            
+            {/* Show delayed takeover option if available */}
+            {availableSlot && userRole === 'spectator' && (
+              <div className="takeover-alert">
+                <h4>🚨 Player Disconnected!</h4>
+                <p>{availableSlot.toUpperCase()} slot is available</p>
+                <button 
+                  className="btn-takeover"
+                  onClick={() => onTakePlayerSlot(availableSlot)}
+                >
+                  Take {availableSlot.toUpperCase()} Slot
+                </button>
+              </div>
+            )}
+            
+            {/* Spectator takeover options when no game in progress */}
+            {userRole === 'spectator' && !lobbyData.gameInProgress && (
+              <div className="spectator-takeover">
+                <h4>Available Actions</h4>
+                {!lobbyData.player1 && (
+                  <button 
+                    className="btn-take-slot"
+                    onClick={() => onTakePlayerSlot('player1')}
+                  >
+                    Take Player 1 Slot
+                  </button>
+                )}
+                
+                {!lobbyData.player2 && (
+                  <button 
+                    className="btn-take-slot"
+                    onClick={() => onTakePlayerSlot('player2')}
+                  >
+                    Take Player 2 Slot
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -156,18 +212,6 @@ function Lobby({ lobbyData, userRole, connectionStatus, onJoinLobby, onTakePlaye
             </div>
           </div>
         </div>
-
-        {/* Connection Error Message */}
-        {connectionStatus !== 'connected' && (
-          <div className="connection-error">
-            {connectionStatus === 'connecting' && (
-              <p>🔄 Connecting to server...</p>
-            )}
-            {(connectionStatus === 'disconnected' || connectionStatus === 'error') && (
-              <p>⚠️ Unable to connect to server. Make sure the backend is running on port 3001.</p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

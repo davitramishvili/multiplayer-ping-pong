@@ -151,6 +151,56 @@ class GameRoom {
       this.gameState.ball.y = Math.max(0, Math.min(GAME_HEIGHT, this.gameState.ball.y));
     }
 
+    // Ball-Paddle collision detection
+    const ballSize = 10; // BALL_SIZE from constants
+    const paddleWidth = 16; // PADDLE_WIDTH from constants
+    
+    // Left paddle (Player 1) collision
+    const paddle1X = PADDLE_OFFSET;
+    const paddle1Y = this.gameState.paddle1.y;
+    
+    if (this.gameState.ball.x - ballSize/2 <= paddle1X + paddleWidth && 
+        this.gameState.ball.x + ballSize/2 >= paddle1X &&
+        this.gameState.ball.y + ballSize/2 >= paddle1Y &&
+        this.gameState.ball.y - ballSize/2 <= paddle1Y + PADDLE_HEIGHT &&
+        this.gameState.ball.velocityX < 0) { // Only if ball is moving left
+      
+      // Reverse X velocity
+      this.gameState.ball.velocityX = -this.gameState.ball.velocityX;
+      
+      // Adjust Y velocity based on where ball hit the paddle (adds spin effect)
+      const hitPos = (this.gameState.ball.y - (paddle1Y + PADDLE_HEIGHT/2)) / (PADDLE_HEIGHT/2);
+      this.gameState.ball.velocityY += hitPos * this.ballSpeedPerFrame * 0.3;
+      
+      // Keep ball outside paddle to prevent sticking
+      this.gameState.ball.x = paddle1X + paddleWidth + ballSize/2;
+      
+      console.log('🏓 Ball hit Player 1 paddle!');
+    }
+    
+    // Right paddle (Player 2) collision
+    const paddle2X = GAME_WIDTH - PADDLE_OFFSET - paddleWidth;
+    const paddle2Y = this.gameState.paddle2.y;
+    
+    if (this.gameState.ball.x + ballSize/2 >= paddle2X && 
+        this.gameState.ball.x - ballSize/2 <= paddle2X + paddleWidth &&
+        this.gameState.ball.y + ballSize/2 >= paddle2Y &&
+        this.gameState.ball.y - ballSize/2 <= paddle2Y + PADDLE_HEIGHT &&
+        this.gameState.ball.velocityX > 0) { // Only if ball is moving right
+      
+      // Reverse X velocity
+      this.gameState.ball.velocityX = -this.gameState.ball.velocityX;
+      
+      // Adjust Y velocity based on where ball hit the paddle (adds spin effect)
+      const hitPos = (this.gameState.ball.y - (paddle2Y + PADDLE_HEIGHT/2)) / (PADDLE_HEIGHT/2);
+      this.gameState.ball.velocityY += hitPos * this.ballSpeedPerFrame * 0.3;
+      
+      // Keep ball outside paddle to prevent sticking
+      this.gameState.ball.x = paddle2X - ballSize/2;
+      
+      console.log('🏓 Ball hit Player 2 paddle!');
+    }
+
     // Ball goes off left or right side (scoring)
     if (this.gameState.ball.x <= 0) {
       // Player 2 scores
@@ -195,9 +245,31 @@ class GameRoom {
     this.gameInProgress = false;
     console.log(`🏆 Game ended! Winner: ${winner}`);
     
+    // Broadcast game over message to all clients
+    const gameOverMessage = {
+      type: 'GAME_OVER',
+      payload: { 
+        winner,
+        finalScore: {
+          player1: this.gameState.score.player1,
+          player2: this.gameState.score.player2
+        },
+        winnerName: this.players[winner]?.name || winner
+      }
+    };
+    
+    // Send to all clients immediately
+    this.broadcastToAllClients(gameOverMessage);
+    
     // Reset game after 3 seconds
     setTimeout(() => {
       this.resetGame();
+      // Broadcast lobby update after reset
+      const lobbyMessage = {
+        type: 'LOBBY_UPDATE',
+        payload: this.getLobbyData()
+      };
+      this.broadcastToAllClients(lobbyMessage);
     }, 3000);
   }
 
@@ -291,6 +363,11 @@ class GameRoom {
     this.spectators.forEach(id => clients.add(id));
     
     return Array.from(clients);
+  }
+
+  // Add method to broadcast to all clients (will be called from server)
+  setBroadcastFunction(broadcastFunction) {
+    this.broadcastToAllClients = broadcastFunction;
   }
 }
 

@@ -15,6 +15,10 @@ app.use(express.json());
 // Store connected clients and game room
 const clients = new Map();
 const gameRoom = new GameRoom();
+const disconnectedPlayerSlots = new Map(); // Track disconnected players with timers
+
+// Set broadcast function for GameRoom
+gameRoom.setBroadcastFunction(broadcastToAll);
 
 // WebSocket connection handling
 wss.on('connection', (ws) => {
@@ -134,9 +138,18 @@ function handleClientDisconnect(clientId) {
   
   const wasPlayer = gameRoom.removePlayer(clientId);
   
-  if (wasPlayer) {
+  if (wasPlayer && (client.role === 'player1' || client.role === 'player2')) {
     console.log(`👤 Player ${client.role} disconnected`);
     broadcastPlayerDisconnected(client.role);
+    
+    // Start 3-second timer for delayed takeover
+    const slotTimer = setTimeout(() => {
+      // After 3 seconds, allow spectators to take the slot
+      broadcastSlotAvailable(client.role);
+      disconnectedPlayerSlots.delete(client.role);
+    }, 3000);
+    
+    disconnectedPlayerSlots.set(client.role, slotTimer);
   }
   
   clients.delete(clientId);
@@ -215,6 +228,16 @@ function broadcastPlayerDisconnected(slot) {
   };
   
   broadcastToAll(message);
+}
+
+function broadcastSlotAvailable(slot) {
+  const message = {
+    type: 'SLOT_AVAILABLE',
+    payload: { slot }
+  };
+  
+  broadcastToAll(message);
+  console.log(`📢 Slot ${slot} is now available for takeover`);
 }
 
 function broadcastToAll(message) {

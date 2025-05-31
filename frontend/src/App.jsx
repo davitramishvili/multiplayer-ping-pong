@@ -8,6 +8,8 @@ function App() {
   const [gameState, setGameState] = useState({
     lobbyData: { player1: null, player2: null, spectators: 0, gameInProgress: false },
     gameData: { ball: {}, paddles: {}, score: {}, status: "waiting" },
+    gameOverData: null,
+    availableSlot: null,
     userRole: null,
     userId: null
   })
@@ -71,8 +73,18 @@ function App() {
         }))
         
         // Auto-transition to game if both players are ready and game in progress
-        if (data.payload.gameInProgress && currentScreen === 'lobby') {
+        // Also transition if user is a player and game is ongoing (spectator who became player)
+        if (data.payload.gameInProgress && 
+            (currentScreen === 'lobby' || 
+             (gameState.userRole === 'player1' || gameState.userRole === 'player2'))) {
+          console.log('🎮 Transitioning to game view')
           setCurrentScreen('game')
+        }
+        
+        // If game is not in progress and we're in game screen, go back to lobby
+        if (!data.payload.gameInProgress && currentScreen === 'game') {
+          console.log('🏠 Returning to lobby (game ended)')
+          setCurrentScreen('lobby')
         }
         break
         
@@ -84,8 +96,16 @@ function App() {
         break
         
       case 'GAME_OVER':
+        console.log('🏆 Game Over:', data.payload)
+        setGameState(prev => ({
+          ...prev,
+          gameOverData: data.payload
+        }))
         setCurrentScreen('gameOver')
+        
+        // Auto-return to lobby after 3 seconds
         setTimeout(() => {
+          console.log('🏠 Returning to lobby after game over')
           setCurrentScreen('lobby')
         }, 3000)
         break
@@ -96,6 +116,42 @@ function App() {
           ...prev,
           userRole: data.payload.role
         }))
+        
+        // If assigned as spectator and there's no game in progress, stay in lobby
+        // If assigned as spectator and game is in progress, go to game view
+        if (data.payload.role === 'spectator') {
+          if (gameState.lobbyData.gameInProgress) {
+            console.log('👥 Spectator joining ongoing game')
+            setCurrentScreen('game')
+          } else {
+            console.log('👥 Spectator staying in lobby')
+            setCurrentScreen('lobby')
+          }
+        }
+        
+        // If assigned as player and game is in progress, switch to game view
+        if ((data.payload.role === 'player1' || data.payload.role === 'player2') && 
+            gameState.lobbyData.gameInProgress && 
+            currentScreen === 'lobby') {
+          console.log('🎮 Transitioning spectator to game view')
+          setCurrentScreen('game')
+        }
+        break
+        
+      case 'SLOT_AVAILABLE':
+        console.log('📢 Player slot available for takeover:', data.payload.slot)
+        setGameState(prev => ({
+          ...prev,
+          availableSlot: data.payload.slot
+        }))
+        
+        // Clear after 10 seconds
+        setTimeout(() => {
+          setGameState(prev => ({
+            ...prev,
+            availableSlot: null
+          }))
+        }, 10000)
         break
         
       case 'PLAYER_DISCONNECTED':
@@ -138,6 +194,7 @@ function App() {
           lobbyData={gameState.lobbyData}
           userRole={gameState.userRole}
           connectionStatus={connectionStatus}
+          availableSlot={gameState.availableSlot}
           onJoinLobby={joinLobby}
           onTakePlayerSlot={takePlayerSlot}
         />
@@ -156,6 +213,14 @@ function App() {
       {currentScreen === 'gameOver' && (
         <div className="game-over">
           <h1>🏆 Game Over!</h1>
+          {gameState.gameOverData && (
+            <>
+              <h2>{gameState.gameOverData.winnerName} Wins!</h2>
+              <p className="final-score">
+                Final Score: {gameState.gameOverData.finalScore.player1} - {gameState.gameOverData.finalScore.player2}
+              </p>
+            </>
+          )}
           <p>Returning to lobby...</p>
         </div>
       )}
