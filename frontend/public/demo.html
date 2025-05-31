@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ping Pong Demo</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #fff;
+            border-radius: 5px;
+        }
+        .buttons {
+            margin: 20px 0;
+        }
+        button {
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+        button:hover {
+            background: #fff;
+            color: #000;
+        }
+        .connected {
+            color: #0f0;
+        }
+        .disconnected {
+            color: #f00;
+        }
+        .info {
+            margin: 10px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏓 Multiplayer Ping Pong - Demo</h1>
+        
+        <div class="status">
+            <h3>Connection Status: <span id="connectionStatus" class="disconnected">Disconnected</span></h3>
+        </div>
+
+        <div class="info">
+            <h3>Lobby Status</h3>
+            <p>Player 1: <span id="player1">Empty</span></p>
+            <p>Player 2: <span id="player2">Empty</span></p>
+            <p>Spectators: <span id="spectators">0</span></p>
+            <p>Your Role: <span id="userRole">None</span></p>
+            <p>Game Status: <span id="gameStatus">Waiting</span></p>
+        </div>
+
+        <div class="buttons">
+            <h3>Choose Your Role:</h3>
+            <button onclick="joinLobby('player1')">Join as Player 1</button>
+            <button onclick="joinLobby('player2')">Join as Player 2</button>
+            <button onclick="joinLobby('spectator')">Join as Spectator</button>
+        </div>
+
+        <div class="info">
+            <h3>Instructions</h3>
+            <p>• Open this page in multiple browser tabs/windows</p>
+            <p>• Try joining as different roles</p>
+            <p>• Watch real-time updates across all tabs</p>
+            <p>• Backend is running on port 3001</p>
+            <p>• Check browser console for WebSocket logs</p>
+        </div>
+
+        <div class="buttons">
+            <button onclick="checkBackend()">Test Backend Health</button>
+        </div>
+
+        <div id="logs" class="info" style="text-align: left; max-height: 200px; overflow-y: auto;">
+            <h4>Connection Logs:</h4>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let userRole = null;
+
+        function log(message) {
+            const logs = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logs.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+            logs.scrollTop = logs.scrollHeight;
+            console.log(message);
+        }
+
+        function connectWebSocket() {
+            try {
+                ws = new WebSocket('ws://localhost:3001');
+                
+                ws.onopen = () => {
+                    log('✅ Connected to WebSocket server');
+                    document.getElementById('connectionStatus').textContent = 'Connected';
+                    document.getElementById('connectionStatus').className = 'connected';
+                };
+                
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    log(`📨 Received: ${data.type}`);
+                    handleMessage(data);
+                };
+                
+                ws.onclose = () => {
+                    log('❌ WebSocket connection closed');
+                    document.getElementById('connectionStatus').textContent = 'Disconnected';
+                    document.getElementById('connectionStatus').className = 'disconnected';
+                    
+                    // Try to reconnect after 3 seconds
+                    setTimeout(connectWebSocket, 3000);
+                };
+                
+                ws.onerror = (error) => {
+                    log(`❌ WebSocket error: ${error}`);
+                };
+                
+            } catch (error) {
+                log(`❌ Failed to connect: ${error.message}`);
+                setTimeout(connectWebSocket, 3000);
+            }
+        }
+
+        function handleMessage(data) {
+            switch (data.type) {
+                case 'LOBBY_UPDATE':
+                    updateLobbyDisplay(data.payload);
+                    break;
+                case 'GAME_STATE':
+                    log(`🎮 Game state updated: ${data.payload.gameStatus}`);
+                    document.getElementById('gameStatus').textContent = data.payload.gameStatus;
+                    break;
+                case 'PLAYER_DISCONNECTED':
+                    log(`👤 Player disconnected: ${data.payload.slot}`);
+                    break;
+                default:
+                    log(`❓ Unknown message type: ${data.type}`);
+            }
+        }
+
+        function updateLobbyDisplay(lobbyData) {
+            document.getElementById('player1').textContent = lobbyData.player1 ? lobbyData.player1.name : 'Empty';
+            document.getElementById('player2').textContent = lobbyData.player2 ? lobbyData.player2.name : 'Empty';
+            document.getElementById('spectators').textContent = lobbyData.spectators;
+            
+            if (lobbyData.gameInProgress) {
+                document.getElementById('gameStatus').textContent = 'Game In Progress';
+            } else {
+                document.getElementById('gameStatus').textContent = 'Waiting for Players';
+            }
+        }
+
+        function joinLobby(role) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ Not connected to server');
+                return;
+            }
+            
+            const message = {
+                type: 'JOIN_LOBBY',
+                payload: { role }
+            };
+            
+            ws.send(JSON.stringify(message));
+            userRole = role;
+            document.getElementById('userRole').textContent = role;
+            log(`🎯 Requested to join as: ${role}`);
+        }
+
+        function checkBackend() {
+            fetch('http://localhost:3001/health')
+                .then(response => response.json())
+                .then(data => {
+                    log(`💚 Backend health: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`❌ Backend health check failed: ${error.message}`);
+                });
+        }
+
+        // Start connection when page loads
+        window.onload = () => {
+            log('🚀 Starting Ping Pong Demo');
+            connectWebSocket();
+        };
+    </script>
+</body>
+</html> 
