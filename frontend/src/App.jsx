@@ -130,9 +130,14 @@ function App() {
           userRole: data.payload.role
         }))
         
-        // Don't auto-transition here - let LOBBY_UPDATE and GAME_STATE handle transitions
-        // This prevents conflicts and race conditions
-        console.log(`👤 Role set to ${data.payload.role}, staying on current screen until next update`)
+        // If assigned as player and there's an active game, transition to game view
+        if ((data.payload.role === 'player1' || data.payload.role === 'player2') && 
+            (gameState.lobbyData.gameInProgress || currentScreen === 'game')) {
+          console.log('🎮 Player role assigned - transitioning to game view')
+          setCurrentScreen('game')
+        }
+        
+        console.log(`👤 Role set to ${data.payload.role}`)
         break
         
       case 'SLOT_AVAILABLE':

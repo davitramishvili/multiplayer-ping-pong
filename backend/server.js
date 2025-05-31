@@ -33,12 +33,12 @@ wss.on('connection', (ws) => {
   });
   
   // Check if game is in progress and auto-assign as spectator
-  if (gameRoom.gameInProgress) {
+  if (gameRoom.gameInProgress && gameRoom.gameState.gameStatus === 'playing') {
     const client = clients.get(clientId);
     gameRoom.addSpectator(clientId);
     client.role = 'spectator';
     
-    console.log(`👥 ${client.name} auto-assigned as spectator (game in progress)`);
+    console.log(`👥 ${client.name} auto-assigned as spectator (game playing)`);
     
     // Send role assignment
     sendToClient(clientId, {
@@ -59,7 +59,8 @@ wss.on('connection', (ws) => {
     
     console.log(`🎮 Sent complete game info to new spectator ${client.name}`);
   } else {
-    // Game not in progress - send initial lobby state
+    // Game not actively playing (waiting, paused, or ended) - send initial lobby state
+    console.log(`🏠 ${clients.get(clientId).name} sent to lobby (game status: ${gameRoom.gameState.gameStatus})`);
     sendToClient(clientId, {
       type: 'LOBBY_UPDATE',
       payload: gameRoom.getLobbyData()
@@ -118,14 +119,15 @@ function handleJoinLobby(clientId, payload) {
     // Remove client from previous role
     gameRoom.removePlayer(clientId);
     
-    // If game is in progress, force spectator role for everyone except current players
-    if (gameRoom.gameInProgress) {
+    // If game is actively playing, force spectator role for everyone except current players
+    if (gameRoom.gameInProgress && gameRoom.gameState.gameStatus === 'playing') {
       gameRoom.addSpectator(clientId);
       client.role = 'spectator';
       assignedRole = 'spectator';
-      console.log(`👥 ${client.name} auto-assigned as spectator (game in progress)`);
+      console.log(`👥 ${client.name} auto-assigned as spectator (game actively playing)`);
     } else {
-      // Game not in progress - assign requested role if available
+      // Game not actively playing (waiting, paused, ended) - assign requested role if available
+      console.log(`🎮 Game status: ${gameRoom.gameState.gameStatus}, allowing role selection`);
       if (role === 'player1' && !gameRoom.players.player1) {
         gameRoom.addPlayer(clientId, 'player1', client.name);
         client.role = 'player1';
@@ -154,7 +156,7 @@ function handleJoinLobby(clientId, payload) {
     });
     
     // If assigned as spectator during ongoing game, send complete game info
-    if (assignedRole === 'spectator' && gameRoom.gameInProgress) {
+    if (assignedRole === 'spectator' && gameRoom.gameInProgress && gameRoom.gameState.gameStatus === 'playing') {
       // Send lobby update first so frontend knows game is in progress
       sendToClient(clientId, {
         type: 'LOBBY_UPDATE',
@@ -172,9 +174,38 @@ function handleJoinLobby(clientId, payload) {
     
     broadcastLobbyUpdate();
     
-    // Start game if both players are ready (only if no game in progress)
+    // Handle game resumption for paused games or starting new games
     if (!gameRoom.gameInProgress && gameRoom.players.player1 && gameRoom.players.player2) {
+      // Start new game
       gameRoom.startGame();
+      broadcastGameState();
+    } else if (gameRoom.gameInProgress && gameRoom.gameState.gameStatus === 'paused' && 
+               gameRoom.players.player1 && gameRoom.players.player2) {
+      // Resume paused game
+      gameRoom.gameState.gameStatus = 'playing';
+      console.log('▶️ Game resumed - both players present');
+      
+      // Send role confirmations to both players to ensure they transition to game view
+      if (gameRoom.players.player1) {
+        const p1Client = clients.get(gameRoom.players.player1.id);
+        if (p1Client) {
+          sendToClient(gameRoom.players.player1.id, {
+            type: 'ROLE_ASSIGNED',
+            payload: { role: 'player1' }
+          });
+        }
+      }
+      
+      if (gameRoom.players.player2) {
+        const p2Client = clients.get(gameRoom.players.player2.id);
+        if (p2Client) {
+          sendToClient(gameRoom.players.player2.id, {
+            type: 'ROLE_ASSIGNED',
+            payload: { role: 'player2' }
+          });
+        }
+      }
+      
       broadcastGameState();
     }
     
@@ -377,6 +408,57 @@ gameRoom.resetGame = function() {
   handleGameReset();
 };
 
+// Handle game start - move non-players to spectators
+function handleGameStart() {
+  console.log('🎮 Game starting - checking who should be spectators');
+  
+  const player1Id = gameRoom.players.player1?.id;
+  const player2Id = gameRoom.players.player2?.id;
+  
+  console.log(`🔍 Confirmed players: P1=${player1Id}, P2=${player2Id}`);
+  console.log(`🔍 Total clients: ${clients.size}`);
+  
+  let movedCount = 0;
+  
+  // Move all clients who aren't the current players to spectators
+  clients.forEach((client, clientId) => {
+    console.log(`🔍 Checking client ${clientId} (${client.name}) - role: ${client.role}`);
+    
+    // Skip if already a spectator or has no role
+    if (client.role === 'spectator' || !client.role) {
+      console.log(`⏭️ Skipping ${client.name} - already spectator or no role`);
+      return;
+    }
+    
+    // Check if this client is one of the actual players
+    const isPlayer1 = clientId === player1Id;
+    const isPlayer2 = clientId === player2Id;
+    
+    console.log(`🔍 ${client.name}: isP1=${isPlayer1}, isP2=${isPlayer2}`);
+    
+    if (!isPlayer1 && !isPlayer2) {
+      const oldRole = client.role;
+      
+      // Add to spectators in game room
+      gameRoom.addSpectator(clientId);
+      client.role = 'spectator';
+      
+      // Send role update to client
+      sendToClient(clientId, {
+        type: 'ROLE_ASSIGNED',
+        payload: { role: 'spectator' }
+      });
+      
+      movedCount++;
+      console.log(`👥 Moved ${client.name} from ${oldRole} to spectator`);
+    } else {
+      console.log(`✅ ${client.name} keeps role ${client.role} (is a player)`);
+    }
+  });
+  
+  console.log(`🎮 Game start complete - moved ${movedCount} clients to spectator`);
+}
+
 // Override the GameRoom's startGame method to also move non-players to spectators
 const originalStartGame = gameRoom.startGame.bind(gameRoom);
 gameRoom.startGame = function() {
@@ -390,7 +472,8 @@ gameRoom.startGame = function() {
   // Start the game first
   originalStartGame();
   
-  // Don't move anyone to spectators during game start
-  // Players should keep their roles, spectators should stay spectators
-  console.log('✅ Game started - all roles maintained');
+  // Now move non-players to spectators
+  handleGameStart();
+  
+  console.log('✅ Game started - roles updated');
 }; 
