@@ -16,8 +16,15 @@ A real-time multiplayer Ping Pong game built with React frontend and Node.js bac
 ping-pong-game/
 ├── package.json (root - manages both frontend/backend)
 ├── README.md
-├── frontend/         # React frontend
+├── frontend/         # React frontend (Vite + React)
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   └── utils/        # Game constants and utilities
 └── backend/          # Node.js backend
+    ├── src/              # GameRoom class and constants
+    ├── utils/            # Backend utilities and constants
+    └── server.js         # Express server with WebSocket
 ```
 
 ## Setup and Installation
@@ -39,9 +46,9 @@ cd ping-pong-game
 npm run install-all
 ```
 
-### Running the Application
+## Running the Application
 
-Start both frontend and backend simultaneously:
+### Option 1: Start Both Services (Recommended)
 ```bash
 npm start
 ```
@@ -50,7 +57,25 @@ This will start:
 - Frontend on http://localhost:3000
 - Backend on http://localhost:3001
 
-### Individual Services
+### Option 2: PowerShell Users (Windows)
+If you're using PowerShell and the above doesn't work:
+
+**Start both services separately:**
+```powershell
+# Terminal 1 - Start Backend
+cd backend ; npm start
+
+# Terminal 2 - Start Frontend  
+cd frontend ; npm start
+```
+
+**Or use PowerShell syntax:**
+```powershell
+# Start both in sequence
+cd backend ; npm start ; cd .. ; cd frontend ; npm start
+```
+
+### Option 3: Individual Services
 
 Run frontend only:
 ```bash
@@ -62,12 +87,11 @@ Run backend only:
 npm run start:backend
 ```
 
-### Testing
+## Accessing the Application
 
-Run all tests:
-```bash
-npm test
-```
+1. **Frontend**: Open http://localhost:3000 in your browser
+2. **Backend API**: http://localhost:3001/health (for health checks)
+3. **WebSocket**: ws://localhost:3001 (automatically connected by frontend)
 
 ## Game Controls
 
@@ -82,16 +106,63 @@ npm test
 4. Play! First to 5 points wins (must win by 2)
 5. Spectators can take over if a player disconnects
 
+## Troubleshooting
+
+### Port Already in Use
+If you get "EADDRINUSE" errors:
+
+**Windows PowerShell:**
+```powershell
+# Find processes using the ports
+netstat -ano | findstr :3000
+netstat -ano | findstr :3001
+
+# Kill process by PID (replace <PID> with actual process ID)
+Stop-Process -Id <PID> -Force
+```
+
+**Alternative ports:**
+If ports 3000/3001 are busy, the servers will automatically try the next available ports (3002, 3003, etc.). Check the terminal output to see which ports are being used.
+
+### WebSocket Connection Issues
+- Make sure the backend is running before opening the frontend
+- Check browser console for connection errors
+- Verify the backend health endpoint: http://localhost:3001/health
+
+### Dependencies Issues
+```bash
+# Clean install
+rm -rf node_modules package-lock.json
+rm -rf frontend/node_modules frontend/package-lock.json  
+rm -rf backend/node_modules backend/package-lock.json
+npm run install-all
+```
+
 ## Technology Stack
 
-- **Frontend**: React (JavaScript)
+- **Frontend**: React 18 + Vite (development server)
 - **Backend**: Node.js with Express
-- **Real-time Communication**: Native WebSockets
+- **Real-time Communication**: Native WebSockets (ws library)
 - **Package Management**: npm with concurrently
+- **Styling**: CSS with responsive design
 
 ## Development
 
-This project follows a structured commit history with 10-15 commits demonstrating full-stack development progression.
+This project follows a structured commit history with 10-15 commits demonstrating full-stack development progression:
+
+1. Project setup and structure
+2. Backend WebSocket server
+3. Frontend React components
+4. Lobby implementation
+5. Game area and controls
+6. Real-time communication
+7. Game physics and mechanics
+8. Error handling and cleanup
+
+## API Endpoints
+
+- `GET /health` - Server health check
+- WebSocket events documented in `PING_PONG_SPECIFICATION.txt`
 
 ## License
 

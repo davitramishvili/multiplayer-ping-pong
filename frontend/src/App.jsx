@@ -90,6 +90,14 @@ function App() {
         }, 3000)
         break
         
+      case 'ROLE_ASSIGNED':
+        console.log('🎭 Role assigned:', data.payload.role)
+        setGameState(prev => ({
+          ...prev,
+          userRole: data.payload.role
+        }))
+        break
+        
       case 'PLAYER_DISCONNECTED':
         console.log('👤 Player disconnected:', data.payload.slot)
         break
@@ -113,7 +121,7 @@ function App() {
       type: 'JOIN_LOBBY',
       payload: { role }
     })
-    setGameState(prev => ({ ...prev, userRole: role }))
+    console.log(`🎯 Requesting to join as: ${role}`)
   }
 
   const takePlayerSlot = (slot) => {
